@@ -28,10 +28,10 @@
     'author': 'Moldeo Interactive',
     'website': 'http://moldeo.coop/',
     'images': [],
-    'depends': ['base','account','account_voucher','sale','account_analytic_analysis','analytic'],
+    'depends': ['base','project'],
     'demo': [],
     'data': [ 'contract_view.xml' ],
-    'test': [],
+    'test': [ 'test/generate_invoice.yml' ],
     'installable': True,
 }
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
