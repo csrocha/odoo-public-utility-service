@@ -1,0 +1,24 @@
+-
+ Generate Contract with utility service
+-
+ !record {model: account.analytic.account, id: utility_contract_1}:
+        name: Utility contract
+        use_utilities: True
+        partner_id: base.res_partner_1
+        address_utilities_id: base.res_partner_1
+        day_of_month_invoice: '1'
+        utility_line_ids:
+                - product_id: product.product_product_1
+                  date_begin: 2014-1-15
+                - product_id: product.product_product_2
+                  date_begin: 2014-1-15
+                - product_id: product.product_product_3
+                  date_begin: 2014-1-15
+
+-
+ Test generate_invoice function.
+-
+ !python {model: account.analytic.account}:
+         self.generate_invoice(cr, uid, [ref('utility_contract_1')])
+
+
