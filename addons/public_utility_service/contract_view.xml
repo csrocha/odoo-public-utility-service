@@ -35,7 +35,19 @@
 		</xpath>
 		<notebook position="inside">
 			<page string="Utilities" attrs="{'invisible':[('use_utilities','=',False)]}">
-				<field name="product_ids" string="Utilities"/>
+                <group>
+				    <field name="address_utilities_id"/>
+				    <field name="day_of_month_invoice"/>
+                    <fiald name="invoice_address"/>
+                </group>
+                <label for="utility_line_ids"/>
+				<field name="utility_line_ids">
+                    <tree editable="top">
+                        <field name='product_id'/>
+                        <field name='date_begin'/>
+                        <field name='date_end'/>
+                    </tree>
+                </field>
 			</page>
 		</notebook>
 	    </field>
