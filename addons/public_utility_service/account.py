@@ -1,44 +1,33 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    OpenERP Module, Open Source Management Solution
-#    Copyright (C) 2004-2010 Tiny SPRL (<http://tiny.be>).
-#    Service Utility Module
-#    Copyright (C) 2004-2010 CT Moldeo Interactive L (<http://moldeo.coop>).
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
-
 from openerp.osv import fields, osv
 from openerp.tools.translate import _
+from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT
 from openerp import netsvc
-import datetime
+from datetime import datetime
+
+def today():
+    return datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
 
 class utility_product_lines(osv.osv):
     _name = 'utility.product.line'
 
     _columns = {
-        'account_id': fields.many2one('account.analytic.account', 'Contract', required=True, ondelete='cascade'),
+        'contract_id': fields.many2one('account.analytic.account', 'Contract', required=True, ondelete='cascade'),
         'product_id': fields.many2one('product.product', 'Product', required=True, ondelete='restrict'),
-        'pricelist_id': fields.many2one('product.pricelist', 'Pricelist', required=False, ondelete='set null'),
-        'date_begin': fields.date('Service begin', required=True),
-        'date_end': fields.date('Service end'),
+        'state': fields.selection([('draft',        'Draft'),
+                                   ('to_install',   'Waiting to install'),
+                                   ('installed',    'Installed'),
+                                   ('to_uninstall', 'Waiting to uninstall'),
+                                   ('uninstalled',  'Uninstalled'),
+                                   ], string='State of the product')
+    }
+
+    _defaults = {
+        'state': 'draft',
     }
 
     _sql_constraints = [
-        ('unique_product_line', 'unique(account_id, product_id, date_begin)', 'Exists this product for this contract'),
+        ('unique_product_line', 'unique(contract_id, product_id)', 'Exists this product for this contract'),
     ]
 
 utility_product_lines()
@@ -52,49 +41,89 @@ class account_analytic_account(osv.osv):
 
     _columns = {
         'use_utilities': fields.boolean('Utilities'),
-        'address_utilities_id': fields.many2one( 'res.partner', 'Delivery Address'),
-        'day_of_month_invoice': fields.selection(_get_day_of_months, 'Day of month to invoice'),
-        'invoice_address': fields.selection([('to_partner', 'To partner address'),
-                                             ('to_invoice_address', 'To invoice address'),
-                                             ('to_delivery_address','To delivery address')], 'Invoice Address'),
-        'utility_line_ids': fields.one2many( 'utility.product.line', 'account_id', 'Utility Service List'),
+        'partner_invoice_id': fields.many2one( 'res.partner', 'Invoice Address'),
+        'partner_shipping_id': fields.many2one( 'res.partner', 'Delivery Address'),
+        'utility_product_line_ids': fields.one2many( 'utility.product.line', 'contract_id', 'Utility Service List'),
+        'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices')
 	}
 
-    def generate_invoice(self, cr, uid, ids, context=None):
+    def cron_generate_invoice(self, cr, uid, context=None):
+        #self.generate_invoice(self, cr, uid, ids=None, context=context)
+        pass
+
+    def generate_invoice(self, cr, uid, ids=None, context=None):
         inv_obj = self.pool.get('account.invoice')
+        period_obj = self.pool.get('account.period')
 
-        context = context or {}
-        base_date = context.get('base_date', datetime.date.today())
-        base_date = datetime.datetime.strptime(base_date , '%Y-%m-%d').date() if isinstance(base_date, str) else base_date
-
-        ids = self.search(cr, uid, [ ('id','in',ids),
-                                     ('state','=','open') ])
+        ids = self.search(cr, uid, [('id', 'in', ids) if ids else ('id','>=',0),
+                                    ('use_utilities','=','True'),
+                                    ('state','=','open') ])
 
         for con in self.browse(cr, uid, ids):
-            date_invoice = (base_date + datetime.timedelta(days=30)).replace(day=int(con.day_of_month_invoice))
+            # Take period
+            period_id = period_obj.find(cr, uid, today(), context=context)
+            period_id = period_id and period_id.pop() or False
 
-            def test_date(b, e):
-                b = datetime.datetime.strptime(b , '%Y-%m-%d').date() if isinstance(b, str) else b
-                e = datetime.datetime.strptime(e , '%Y-%m-%d').date() if isinstance(e, str) else e
-                return b < date_invoice and ((e and date_invoice < e) or (not e))
+            if not period_id:
+                raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
 
-            value = {
-                'partner_id': con.partner_id.id,
-                'account_id': con.partner_id.property_account_receivable.id,
-                'company_id': con.company_id.id,
-                'date_invoice': date_invoice.strftime("%Y-%m-%d"),
-                'origin': con.name,
-                'type': 'out_invoice',
-                'invoice_line': [
-                    (0,0,{
-                        'name': line.product_id.name,
-                        'product_id': line.product_id.id,
-                    }) for line in con.utility_line_ids if test_date(line.date_begin, line.date_end)
-                ],
-            }
+            # Items to append to invoices.
+            products_to_add = [ (0,0,{
+                'name': line.product_id.name,
+                'product_id': line.product_id.id,
+            }) for line in con.utility_product_line_ids if line.state=='installed' ]
 
-            inv_id = inv_obj.create(cr, uid, value)
-            pass
+            # No items to append from this contract.
+            if not products_to_add:
+                continue
+
+            # Take yet exists invoices with this periods and partner.
+            inv_id = inv_obj.search(cr, uid, [('period_id','=',period_id),('partner_id', '=', con.partner_id.id),('state','=','draft')])
+            inv_id = inv_id and inv_id.pop() or False
+
+            # I had this invoice in contract invoices?
+            if inv_id in [ i.id for i in con.invoice_ids ]:
+                continue
+
+            # If not invoice, create one.
+            if not inv_id:
+                value = {
+                    'partner_id': con.partner_invoice_id.id or con.partner_id.id,
+                    'account_id': con.partner_id.property_account_receivable.id,
+                    'company_id': con.company_id.id,
+                    'period_id': period_id,
+                    'date_invoice': period_obj.browse(cr, uid, period_id).date_start,
+                    'origin': con.name,
+                    'type': 'out_invoice',
+                }
+                inv_id = inv_obj.create(cr, uid, value)
+
+            # Update invoice.
+            inv_obj.write(cr, uid, inv_id, { 'invoice_line': products_to_add })
+
+            # Update contract list of invoices.
+            self.write(cr, uid, con.id, { 'invoice_ids': [ (4,inv_id) ] })
+
+        return None
+
+    def get_draft_invoices(self, cr, uid, ids=None, context= None):
+        """
+        Return all invoices in draft associated to contracts.
+        """
+        inv_obj = self.pool.get('account.invoice')
+
+        ids = self.search(cr, uid, [('id', 'in', ids) if ids else ('id','>=',0),
+                                    ('use_utilities','=','True'),
+                                    ('state','=','open') ])
+
+        inv_ids = []
+
+        for con in self.browse(cr, uid, ids):
+            for inv in con.invoice_ids:
+                if inv.state == 'draft':
+                    inv_ids.append(inv.id)
+
+        return inv_ids
 
 
 account_analytic_account()

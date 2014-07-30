@@ -28,9 +28,20 @@
     'author': 'Moldeo Interactive',
     'website': 'http://moldeo.coop/',
     'images': [],
-    'depends': ['base','project'],
+    'depends': [
+        'base',
+        'account',
+        'sale',
+        'account_analytic_analysis',
+        'project',
+    ],
     'demo': [],
-    'data': [ 'contract_view.xml' ],
+    'data': [
+        'data/cron_action.xml',
+        'data/product_view.xml',
+        'data/contract_view.xml',
+        'wizard/invoice_contract_data.xml',
+    ],
     'test': [ 'test/generate_invoice.yml' ],
     'installable': True,
 }
