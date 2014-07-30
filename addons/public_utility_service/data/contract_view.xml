@@ -50,9 +50,6 @@
         </record>
         <menuitem action="contract_fee_action" id="menu_contract_fee_action" sequence="8" parent="base.menu_sales"/>
 
-        <!--record id="contract_fee_invoice_action" model="ir.action.act_window">
-        </record-->
-
     </data>
 </openerp>
 <!--
