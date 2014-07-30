@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OpenERP Server 7.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-07-30 13:06+0000\n"
-"PO-Revision-Date: 2014-07-30 13:06+0000\n"
+"POT-Creation-Date: 2014-07-30 13:19+0000\n"
+"PO-Revision-Date: 2014-07-30 13:19+0000\n"
 "Last-Translator: <>\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -52,11 +52,6 @@ msgstr "Validar factura"
 #: field:account.analytic.account,use_utilities:0
 msgid "Utilities"
 msgstr "Servicios"
-
-#. module: public_utility_service
-#: view:pus.wiz_invoice_contract:0
-msgid "Select Journal and range of invoices to query"
-msgstr "Seleccione un Diario y un rango de facturas a buscar"
 
 #. module: public_utility_service
 #: field:account.analytic.account,partner_shipping_id:0
@@ -141,6 +136,11 @@ msgstr "Esperando a instalar"
 #: field:account.analytic.account,invoice_ids:0
 msgid "Invoices"
 msgstr "Facturas"
+
+#. module: public_utility_service
+#: view:pus.wiz_invoice_contract:0
+msgid "Would you like to validate invoices?"
+msgstr "Le gustaría validar las facturas?"
 
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
