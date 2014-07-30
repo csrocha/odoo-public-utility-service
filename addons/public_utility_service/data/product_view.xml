@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+        <record model="ir.ui.view" id="product_normal_form_view">
+            <field name="name">pus.product.normal.form.inherit</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_normal_form_view"/>
+            <field eval="30" name="priority"/>
+            <field name="arch" type="xml">
+                <field name="type" position="after">
+                    <field name="is_under_contract" attrs="{'invisible':[('type','!=','service')]}"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</openerp>
+<!--
+ vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+ -->

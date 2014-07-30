@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+        <record model="ir.ui.view" id="analytic_account_inherited_utlity_form">
+            <field name="name">account.analytic.account.utility.form.inherit</field>
+            <field name="model">account.analytic.account</field>
+            <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+            <field eval="19" name="priority"/>
+            <field name="arch" type="xml">
+            <xpath expr='//div[@name="project"]' position='inside'>
+                <field name="use_utilities"/>
+                <label for="use_utilities"/>
+            </xpath>
+            <notebook position="inside">
+                <page string="Utilities" attrs="{'invisible':[('use_utilities','=',False)]}">
+                    <group>
+                        <field name="partner_invoice_id"/>
+                        <field name="partner_shipping_id"/>
+                    </group>
+                    <label for="utility_product_line_ids"/>
+                    <field name="utility_product_line_ids">
+                        <tree editable="top">
+                            <field name='product_id'/>
+                            <field name='state'/>
+                        </tree>
+                    </field>
+                </page>
+                <page string="Invoices" attrs="{'invisible':[('use_utilities','=',False)]}">
+                    <label for="invoice_ids"/>
+                    <field name="invoice_ids"/>
+                </page>
+             </notebook>
+            </field>
+        </record>
+
+        <!-- Action Sales/Configuration/Contract Fee -->
+        <record id="contract_fee_action" model="ir.actions.act_window">
+            <field name="name">Contract Fee</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">account.analytic.account</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('type','!=','template'),('use_utilities','=','True')]</field>
+            <field name="context">{'search_default_type':'contract','search_default_use_utilities':'True','default_type' : 'contract','default_use_utilities' : 'True'}</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    Click here to create a contract fee.
+                </p>
+            </field>
+        </record>
+        <menuitem action="contract_fee_action" id="menu_contract_fee_action" sequence="8" parent="base.menu_sales"/>
+
+        <!--record id="contract_fee_invoice_action" model="ir.action.act_window">
+        </record-->
+
+    </data>
+</openerp>
+<!--
+ vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+ -->
