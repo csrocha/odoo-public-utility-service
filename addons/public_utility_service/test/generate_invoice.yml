@@ -6,14 +6,13 @@
         use_utilities: True
         partner_id: base.res_partner_1
         address_utilities_id: base.res_partner_1
-        day_of_month_invoice: '1'
-        utility_line_ids:
+        utility_product_line_ids:
                 - product_id: product.product_product_1
-                  date_begin: 2014-1-15
+                  state: installed
                 - product_id: product.product_product_2
-                  date_begin: 2014-1-15
+                  state: installed
                 - product_id: product.product_product_3
-                  date_begin: 2014-1-15
+                  state: installed
 
 -
  Test generate_invoice function.
