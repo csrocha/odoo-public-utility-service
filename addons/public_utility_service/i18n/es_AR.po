@@ -19,7 +19,7 @@ msgstr ""
 #: model:ir.actions.act_window,name:public_utility_service.contract_fee_action
 #: model:ir.ui.menu,name:public_utility_service.menu_contract_fee_action
 msgid "Contract Fee"
-msgstr "Contract Fee"
+msgstr "Contrato de Abono"
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_pus_wiz_invoice_contract
@@ -29,12 +29,12 @@ msgstr "pus.wiz_invoice_contract"
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
 msgid "Draft"
-msgstr "Draft"
+msgstr "Borrador"
 
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
 msgid "Uninstalled"
-msgstr "Uninstalled"
+msgstr "No instalado"
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_product_product
@@ -45,60 +45,60 @@ msgstr "Producto"
 #. module: public_utility_service
 #: field:pus.wiz_invoice_contract,do_validate:0
 msgid "Validate invoice"
-msgstr "Validate invoice"
+msgstr "Validar factura"
 
 #. module: public_utility_service
 #: view:account.analytic.account:0
 #: field:account.analytic.account,use_utilities:0
 msgid "Utilities"
-msgstr "Utilities"
+msgstr "Servicios"
 
 #. module: public_utility_service
 #: view:pus.wiz_invoice_contract:0
 msgid "Select Journal and range of invoices to query"
-msgstr "Select Journal and range of invoices to query"
+msgstr "Seleccione un Diario y un rango de facturas a buscar"
 
 #. module: public_utility_service
 #: field:account.analytic.account,partner_shipping_id:0
 msgid "Delivery Address"
-msgstr "Delivery Address"
+msgstr "Dirección de Instalación"
 
 #. module: public_utility_service
 #: field:account.analytic.account,utility_product_line_ids:0
 msgid "Utility Service List"
-msgstr "Utility Service List"
+msgstr "Lista de Servicios"
 
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
 msgid "Waiting to uninstall"
-msgstr "Waiting to uninstall"
+msgstr "Esperando para instalar"
 
 #. module: public_utility_service
 #: model:ir.actions.act_window,name:public_utility_service.action_invoice_contract_fee
 #: model:ir.ui.menu,name:public_utility_service.menu_invoicing_contract_fee_action
 msgid "Invoicing Contract Fee"
-msgstr "Invoicing Contract Fee"
+msgstr "Facturar Abonos"
 
 #. module: public_utility_service
 #: view:pus.wiz_invoice_contract:0
 msgid "Execute"
-msgstr "Execute"
+msgstr "Ejecute"
 
 #. module: public_utility_service
 #: code:addons/public_utility_service/account.py:68
 #, python-format
 msgid "There is no opening/closing period defined, please create one to set the initial balance."
-msgstr "There is no opening/closing period defined, please create one to set the initial balance."
+msgstr "No hay un período abierto definido, por favor cree uno para el balance."
 
 #. module: public_utility_service
 #: field:utility.product.line,contract_id:0
 msgid "Contract"
-msgstr "Contract"
+msgstr "Contrato"
 
 #. module: public_utility_service
 #: help:product.product,is_under_contract:0
 msgid "This product must be invoiced under a contract"
-msgstr "This product must be invoiced under a contract"
+msgstr "Este producto debe ser facturado por contrato"
 
 #. module: public_utility_service
 #: code:addons/public_utility_service/account.py:68
@@ -109,22 +109,22 @@ msgstr "Error!"
 #. module: public_utility_service
 #: field:utility.product.line,state:0
 msgid "State of the product"
-msgstr "State of the product"
+msgstr "Estado del producto"
 
 #. module: public_utility_service
 #: field:product.product,is_under_contract:0
 msgid "Service under contract"
-msgstr "Service under contract"
+msgstr "Servicio bajo contrato"
 
 #. module: public_utility_service
 #: field:account.analytic.account,partner_invoice_id:0
 msgid "Invoice Address"
-msgstr "Invoice Address"
+msgstr "Dirección de Facturación"
 
 #. module: public_utility_service
 #: sql_constraint:utility.product.line:0
 msgid "Exists this product for this contract"
-msgstr "Exists this product for this contract"
+msgstr "Ya existe este producto para este contrato"
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_utility_product_line
@@ -134,18 +134,18 @@ msgstr "utility.product.line"
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
 msgid "Waiting to install"
-msgstr "Waiting to install"
+msgstr "Esperando a instalar"
 
 #. module: public_utility_service
 #: view:account.analytic.account:0
 #: field:account.analytic.account,invoice_ids:0
 msgid "Invoices"
-msgstr "Invoices"
+msgstr "Facturas"
 
 #. module: public_utility_service
 #: selection:utility.product.line,state:0
 msgid "Installed"
-msgstr "Installed"
+msgstr "Instalado"
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_account_analytic_account
@@ -155,12 +155,12 @@ msgstr "Cuenta Analítica"
 #. module: public_utility_service
 #: view:pus.wiz_invoice_contract:0
 msgid "Cancel"
-msgstr "Cancel"
+msgstr "Cancelar"
 
 #. module: public_utility_service
 #: view:pus.wiz_invoice_contract:0
 msgid "Create and Validate Invoices from Contract Fee"
-msgstr "Create and Validate Invoices from Contract Fee"
+msgstr "Crear y Validar Contratos de Abonos."
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_sale_order
@@ -170,7 +170,7 @@ msgstr "Pedido de venta"
 #. module: public_utility_service
 #: view:pus.wiz_invoice_contract:0
 msgid "or"
-msgstr "or"
+msgstr "o"
 
 #. module: public_utility_service
 #: model:ir.model,name:public_utility_service.model_sale_order_line
@@ -184,7 +184,7 @@ msgid "<p class=\"oe_view_nocontent_create\">\n"
 "                </p>\n"
 "            "
 msgstr "<p class=\"oe_view_nocontent_create\">\n"
-"                    Click here to create a contract fee.\n"
+"                    Presione para crear un nuevo contrato de abono.\n"
 "                </p>\n"
 "            "
 
