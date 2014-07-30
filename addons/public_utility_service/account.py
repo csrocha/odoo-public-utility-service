@@ -47,22 +47,22 @@ class account_analytic_account(osv.osv):
         'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices')
 	}
 
-    def cron_generate_invoice(self, cr, uid, context=None):
-        #self.generate_invoice(self, cr, uid, ids=None, context=context)
-        pass
-
     def generate_invoice(self, cr, uid, ids=None, context=None):
         inv_obj = self.pool.get('account.invoice')
         period_obj = self.pool.get('account.period')
+        wf_service = netsvc.LocalService("workflow")
 
         ids = self.search(cr, uid, [('id', 'in', ids) if ids else ('id','>=',0),
                                     ('use_utilities','=','True'),
                                     ('state','=','open') ])
 
+        draft_inv_ids = []
+
         for con in self.browse(cr, uid, ids):
             # Take period
             period_id = period_obj.find(cr, uid, today(), context=context)
-            period_id = period_id and period_id.pop() or False
+            period = period_obj.browse(cr, uid, period_id[0])
+            period_id = period_obj.next(cr, uid, period, 1)
 
             if not period_id:
                 raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
@@ -78,7 +78,7 @@ class account_analytic_account(osv.osv):
                 continue
 
             # Take yet exists invoices with this periods and partner.
-            inv_id = inv_obj.search(cr, uid, [('period_id','=',period_id),('partner_id', '=', con.partner_id.id),('state','=','draft')])
+            inv_id = inv_obj.search(cr, uid, [('period_id','=',period_id),('partner_id', '=', con.partner_id.id),('state','!=','cancel')])
             inv_id = inv_id and inv_id.pop() or False
 
             # I had this invoice in contract invoices?
@@ -98,13 +98,18 @@ class account_analytic_account(osv.osv):
                 }
                 inv_id = inv_obj.create(cr, uid, value)
 
+            # If invoice is not draft, I cant add any line.
+            elif inv_obj.browse(cr, uid, inv_id).state != 'draft':
+                continue
+
             # Update invoice.
             inv_obj.write(cr, uid, inv_id, { 'invoice_line': products_to_add })
+            draft_inv_ids.append(inv_id)
 
             # Update contract list of invoices.
             self.write(cr, uid, con.id, { 'invoice_ids': [ (4,inv_id) ] })
 
-        return None
+        return draft_inv_ids
 
     def get_draft_invoices(self, cr, uid, ids=None, context= None):
         """
