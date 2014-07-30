@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+   <data>
+      <record id="invoice_contract_fee" model="ir.ui.view">
+        <field name="name">pus.invoice_contract_fee.form</field>
+        <field name="model">pus.wiz_invoice_contract</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+          <form string="Create and Validate Invoices from Contract Fee" version="7.0">
+              <group string="Select Journal and range of invoices to query">
+                  <field name="do_validate"/>
+              </group>
+              <footer>
+                  <button string="Execute" name="execute" type="object" icon="gtk-ok" colspan="2"/> 
+                  or
+                  <button string="Cancel" special="cancel" name="on_cancel" icon="gtk-cancel" colspan="2"/> 
+              </footer>
+          </form>
+        </field>
+    </record>
+
+    <record id="action_invoice_contract_fee" model="ir.actions.act_window">
+        <field name="name">Invoicing Contract Fee</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">pus.wiz_invoice_contract</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem action="action_invoice_contract_fee" id="menu_invoicing_contract_fee_action" sequence="8" parent="base.menu_invoiced"/>
+
+    </data>
+</openerp>
+<!--
+ vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+ -->
