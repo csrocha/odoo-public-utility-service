@@ -7,7 +7,7 @@
         <field name="type">form</field>
         <field name="arch" type="xml">
           <form string="Create and Validate Invoices from Contract Fee" version="7.0">
-              <group string="Indique si quiere validar las facturas que va a generar">
+              <group string="Would you like to validate invoices?">
                   <field name="do_validate"/>
               </group>
               <footer>
