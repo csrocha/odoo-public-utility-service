@@ -41,7 +41,7 @@ class sale_order(osv.osv):
                     # Utility service properties
                     #
                     'use_utilities': True,
-                    'address_utilities_id': order.partner_shipping_id.id,
+                    'partner_shipping_id': order.partner_shipping_id.id,
                     'invoice_address': 'to_partner',
                     #'day_of_month_invoice': False,
                     'utility_product_line_ids': [ (0,0,{ 'product_id': _pl_.product_id.id, }) for _pl_ in order.order_line if _pl_.product_id.is_under_contract ],

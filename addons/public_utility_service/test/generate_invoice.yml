@@ -5,7 +5,7 @@
         name: Utility contract
         use_utilities: True
         partner_id: base.res_partner_1
-        address_utilities_id: base.res_partner_1
+        partner_shipping_id: base.res_partner_1
         utility_product_line_ids:
                 - product_id: product.product_product_1
                   state: installed
