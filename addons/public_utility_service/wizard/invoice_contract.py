@@ -37,7 +37,6 @@ class wiz_invoice_contract(osv.osv_memory):
         }
         if len(ids) == 1:
             value['res_id'] = ids[0]
-        print value, ids
         return value
 
 wiz_invoice_contract()
