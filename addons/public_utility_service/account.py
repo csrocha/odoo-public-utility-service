@@ -45,6 +45,7 @@ class account_analytic_account(osv.osv):
         'partner_invoice_id': fields.many2one( 'res.partner', 'Invoice Address'),
         'partner_shipping_id': fields.many2one( 'res.partner', 'Delivery Address'),
         'utility_product_line_ids': fields.one2many( 'utility.product.line', 'contract_id', 'Utility Service List'),
+        'invoice_journal_id': fields.many2one('account.journal', 'Default journal for invoices'),
         'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices'),
         'invoices_automatic_validation': fields.boolean('Automatic invoice validation'),
         'invoices_no_change_validation': fields.boolean('Only validate no changed invoices'),
@@ -100,6 +101,7 @@ class account_analytic_account(osv.osv):
                     'origin': con.name,
                     'type': 'out_invoice',
                 }
+                if con.invoice_journal_id: value['journal_id'] = con.invoice_journal_id.id
                 inv_id = inv_obj.create(cr, uid, value)
 
             # If invoice is not draft, I cant add any line.
