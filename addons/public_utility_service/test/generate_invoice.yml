@@ -20,4 +20,63 @@
  !python {model: account.analytic.account}:
          self.generate_invoice(cr, uid, [ref('utility_contract_1')])
 
+-
+ Generate Contract with utility service and automatic invoice validation
+-
+ !record {model: account.analytic.account, id: utility_contract_2}:
+        name: Utility contract
+        use_utilities: True
+        partner_id: base.res_partner_1
+        partner_shipping_id: base.res_partner_1
+        utility_product_line_ids:
+                - product_id: product.product_product_1
+                  state: installed
+                - product_id: product.product_product_2
+                  state: installed
+                - product_id: product.product_product_3
+                  state: installed
+        invoices_automatic_validation: True
+        invoices_no_change_validation: True
 
+-
+ Test generate_invoice function.
+-
+ !python {model: account.analytic.account}: |
+         period_obj = self.pool.get('account.period')
+         period_id = period_obj.find(cr, uid)[0]
+         period = period_obj.browse(cr, uid, period_id)
+         self.generate_invoice(cr, uid, [ref('utility_contract_2')], period_id=period.id)
+         self.generate_invoice(cr, uid, [ref('utility_contract_2')], period_id=period_obj.next(cr, uid, period, 1))
+         invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
+         assert len(invoices) == 2, 'Error! Must have 2 invoices! Have: %i' % len(invoices)
+         assert all(inv.state=='draft' for inv in invoices) , 'Error! None invoices must be validated'
+         
+-
+ Hand made invoice validation.
+-
+ !python {model: account.analytic.account}: |
+         from openerp import netsvc
+         wf_service = netsvc.LocalService("workflow")
+         invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
+         for inv in invoices:
+                 wf_service.trg_validate(uid, 'account.invoice', inv.id, 'invoice_open', cr)
+
+-
+ Check invoice validation.
+-
+ !python {model: account.analytic.account}: |
+         invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
+         assert all(inv.state=='open' for inv in invoices) , 'Error! All invoices must be validated'
+
+-
+ Test generate_invoice function but now must validate.
+-
+ !python {model: account.analytic.account}: |
+         period_obj = self.pool.get('account.period')
+         period_id = period_obj.find(cr, uid)[0]
+         period = period_obj.browse(cr, uid, period_id)
+         self.generate_invoice(cr, uid, [ref('utility_contract_2')], period_id=period_obj.next(cr, uid, period, 2))
+         invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
+         assert len(invoices) == 3, 'Error! Must have 3 invoices! Have: %i' % len(invoices)
+         assert all(inv.state=='open' for inv in invoices) , 'Error! All invoices must be validated'
+          

@@ -4,6 +4,7 @@ from openerp.tools.translate import _
 from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT
 from openerp import netsvc
 from datetime import datetime
+from operator import attrgetter
 
 def today():
     return datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
@@ -44,10 +45,12 @@ class account_analytic_account(osv.osv):
         'partner_invoice_id': fields.many2one( 'res.partner', 'Invoice Address'),
         'partner_shipping_id': fields.many2one( 'res.partner', 'Delivery Address'),
         'utility_product_line_ids': fields.one2many( 'utility.product.line', 'contract_id', 'Utility Service List'),
-        'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices')
+        'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices'),
+        'invoices_automatic_validation': fields.boolean('Automatic invoice validation'),
+        'invoices_no_change_validation': fields.boolean('Only validate no changed invoices'),
 	}
 
-    def generate_invoice(self, cr, uid, ids=None, context=None):
+    def generate_invoice(self, cr, uid, ids=None, period_id=None, context=None):
         inv_obj = self.pool.get('account.invoice')
         period_obj = self.pool.get('account.period')
         wf_service = netsvc.LocalService("workflow")
@@ -59,13 +62,14 @@ class account_analytic_account(osv.osv):
         draft_inv_ids = []
 
         for con in self.browse(cr, uid, ids):
-            # Take period
-            period_id = period_obj.find(cr, uid, today(), context=context)
-            period = period_obj.browse(cr, uid, period_id[0])
-            period_id = period_obj.next(cr, uid, period, 1)
-
+            # Take period if not defined
             if not period_id:
-                raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
+                period_id = period_obj.find(cr, uid, today(), context=context)
+                period = period_obj.browse(cr, uid, period_id[0])
+                period_id = period_obj.next(cr, uid, period, 1)
+
+                if not period_id:
+                    raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
 
             # Items to append to invoices.
             products_to_add = [ (0,0,{
@@ -108,6 +112,29 @@ class account_analytic_account(osv.osv):
 
             # Update contract list of invoices.
             self.write(cr, uid, con.id, { 'invoice_ids': [ (4,inv_id) ] })
+
+            # Automatic validation
+            validate = con.invoices_automatic_validation
+            if validate and con.invoices_no_change_validation:
+                # If change invoice beetween last validated invoice then no validate
+                invoices = sorted(con.invoice_ids, key=attrgetter('date_invoice'))
+                if invoices:
+                    prev_invoice = invoices[-1]
+                    last_invoice = inv_obj.browse(cr, uid, inv_id)
+                    # If last is validate then check, else no validate
+                    validate = prev_invoice.state != 'draft'
+                    # Compare last two invoices
+                    ## first by amounts
+                    validate = validate and (prev_invoice.amount_total == last_invoice.amount_total)
+                    ## late by partner
+                    validate = validate and (prev_invoice.partner_id.id == last_invoice.partner_id.id)
+                else:
+                    validate = False
+
+        # Can validate?
+        if validate:
+            wf_service = netsvc.LocalService("workflow")
+            wf_service.trg_validate(uid, 'account.invoice', inv_id, 'invoice_open', cr)
 
         return draft_inv_ids
 
