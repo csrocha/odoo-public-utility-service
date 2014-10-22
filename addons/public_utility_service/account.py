@@ -83,7 +83,6 @@ class account_analytic_account(osv.osv):
                 continue
 
             # Take yet exists invoices with this periods and partner.
-            import pdb; pdb.set_trace()
             inv_id = inv_obj.search(cr, uid, [('period_id','=',period_id),('partner_id', '=', con.partner_id.id),('state','!=','cancel')])
             inv_id = inv_id and inv_id.pop() or False
 
@@ -134,10 +133,10 @@ class account_analytic_account(osv.osv):
                 else:
                     validate = False
 
-        # Can validate?
-        if validate:
-            wf_service = netsvc.LocalService("workflow")
-            wf_service.trg_validate(uid, 'account.invoice', inv_id, 'invoice_open', cr)
+            # Can validate?
+            if validate:
+                wf_service = netsvc.LocalService("workflow")
+                wf_service.trg_validate(uid, 'account.invoice', inv_id, 'invoice_open', cr)
 
         return draft_inv_ids
 
