@@ -51,7 +51,7 @@ class account_analytic_account(osv.osv):
         'invoices_no_change_validation': fields.boolean('Only validate no changed invoices'),
 	}
 
-    def generate_invoice(self, cr, uid, ids=None, period_id=None, context=None):
+    def generate_invoice(self, cr, uid, ids=None, context=None, period_id=None, ):
         inv_obj = self.pool.get('account.invoice')
         period_obj = self.pool.get('account.period')
         wf_service = netsvc.LocalService("workflow")
@@ -83,6 +83,7 @@ class account_analytic_account(osv.osv):
                 continue
 
             # Take yet exists invoices with this periods and partner.
+            import pdb; pdb.set_trace()
             inv_id = inv_obj.search(cr, uid, [('period_id','=',period_id),('partner_id', '=', con.partner_id.id),('state','!=','cancel')])
             inv_id = inv_id and inv_id.pop() or False
 
