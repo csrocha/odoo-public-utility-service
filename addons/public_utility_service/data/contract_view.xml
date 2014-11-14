@@ -27,9 +27,6 @@
                 </page>
                 <page string="Invoices" attrs="{'invisible':[('use_utilities','=',False)]}">
                     <group>
-			<button name="generate_invoice" type="object" string="Generate Invoice"/>
-                    </group>
-                    <group>
                         <field name="invoice_journal_id"/>
                         <field name="invoices_automatic_validation"/>
                         <field name="invoices_no_change_validation" attrs="{'invisible':[('invoices_automatic_validation','=',False)]}"/>

@@ -51,27 +51,32 @@ class account_analytic_account(osv.osv):
         'invoices_no_change_validation': fields.boolean('Only validate no changed invoices'),
 	}
 
-    def generate_invoice(self, cr, uid, ids=None, context=None, period_id=None, ):
+    def pus_generate_invoice(self, cr, uid, ids=None, context=None, period_id=None, ):
         inv_obj = self.pool.get('account.invoice')
         period_obj = self.pool.get('account.period')
         wf_service = netsvc.LocalService("workflow")
 
-        ids = self.search(cr, uid, [('id', 'in', ids) if ids else ('id','>=',0),
+        _ids = self.search(cr, uid, [('id', 'in', ids) if ids else ('id','>=',0),
                                     ('use_utilities','=','True'),
                                     ('state','=','open') ])
 
+        ids = _ids
         draft_inv_ids = []
 
+        # Take period if not defined
+        if not period_id:
+            period_id = period_obj.find(cr, uid, today(), context=context)
+            if not len(period_id) > 0:
+                raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
+            period_id = period_id[0]
+
+        period = period_obj.browse(cr, uid, period_id)
+        next_period_id = period_obj.next(cr, uid, period, 1)
+
+        if not next_period_id:
+            raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
+
         for con in self.browse(cr, uid, ids):
-            # Take period if not defined
-            if not period_id:
-                period_id = period_obj.find(cr, uid, today(), context=context)
-                period = period_obj.browse(cr, uid, period_id[0])
-                period_id = period_obj.next(cr, uid, period, 1)
-
-                if not period_id:
-                    raise osv.except_osv(_('Error!'),_("There is no opening/closing period defined, please create one to set the initial balance."))
-
             # Items to append to invoices.
             products_to_add = [ (0,0,{
                 'name': line.product_id.name,
@@ -97,9 +102,12 @@ class account_analytic_account(osv.osv):
                     'account_id': con.partner_id.property_account_receivable.id,
                     'company_id': con.company_id.id,
                     'period_id': period_id,
-                    'date_invoice': period_obj.browse(cr, uid, period_id).date_start,
+                    'date_invoice': period_obj.browse(cr, uid, next_period_id).date_start,
                     'origin': con.name,
                     'type': 'out_invoice',
+                    # Solo para la localización argentina. Muy triste :-(
+                    'afip_service_start': period.date_start,
+                    'afip_service_end': period.date_stop,
                 }
                 if con.invoice_journal_id: value['journal_id'] = con.invoice_journal_id.id
                 inv_id = inv_obj.create(cr, uid, value)

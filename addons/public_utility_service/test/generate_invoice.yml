@@ -75,7 +75,7 @@
          period_obj = self.pool.get('account.period')
          period_id = period_obj.find(cr, uid)[0]
          period = period_obj.browse(cr, uid, period_id)
-         self.generate_invoice(cr, uid, [ref('utility_contract_2')], period_id=period_obj.next(cr, uid, period, 2))
+         self.pus_generate_invoice(cr, uid, [ref('utility_contract_2')], period_id=period_obj.next(cr, uid, period, 2))
          invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
          assert len(invoices) == 3, 'Error! Must have 3 invoices! Have: %i' % len(invoices)
          assert all(inv.state=='open' for inv in invoices) , 'Error! All invoices must be validated'
