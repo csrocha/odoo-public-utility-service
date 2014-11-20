@@ -5,6 +5,7 @@ from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT
 from openerp import netsvc
 from datetime import datetime
 from operator import attrgetter
+import openerp.addons.decimal_precision as dp
 
 def today():
     return datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
@@ -15,6 +16,8 @@ class utility_product_lines(osv.osv):
     _columns = {
         'contract_id': fields.many2one('account.analytic.account', 'Contract', required=True, ondelete='cascade'),
         'product_id': fields.many2one('product.product', 'Product', required=True, ondelete='restrict'),
+        'product_uom': fields.many2one('product.uom', 'Unit of Measure ', required=True),
+        'product_uom_qty': fields.float('Quantity', digits_compute= dp.get_precision('Product UoS'), required=True),
         'state': fields.selection([('draft',        'Draft'),
                                    ('to_install',   'Waiting to install'),
                                    ('installed',    'Installed'),
@@ -25,6 +28,7 @@ class utility_product_lines(osv.osv):
 
     _defaults = {
         'state': 'draft',
+        'product_uom_qty': 1.0,
     }
 
     _sql_constraints = [
@@ -44,6 +48,7 @@ class account_analytic_account(osv.osv):
         'use_utilities': fields.boolean('Utilities'),
         'partner_invoice_id': fields.many2one( 'res.partner', 'Invoice Address'),
         'partner_shipping_id': fields.many2one( 'res.partner', 'Delivery Address'),
+        'pricelist_id': fields.many2one( 'product.pricelist', 'Price list'),
         'utility_product_line_ids': fields.one2many( 'utility.product.line', 'contract_id', 'Utility Service List'),
         'invoice_journal_id': fields.many2one('account.journal', 'Default journal for invoices'),
         'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices'),
@@ -53,6 +58,8 @@ class account_analytic_account(osv.osv):
 
     def pus_generate_invoice(self, cr, uid, ids=None, context=None, period_id=None, ):
         inv_obj = self.pool.get('account.invoice')
+        pricelist_obj = self.pool.get('product.pricelist')
+        inv_line_obj = self.pool.get('account.invoice.line')
         period_obj = self.pool.get('account.period')
         wf_service = netsvc.LocalService("workflow")
 
@@ -78,10 +85,19 @@ class account_analytic_account(osv.osv):
 
         for con in self.browse(cr, uid, ids):
             # Items to append to invoices.
-            products_to_add = [ (0,0,{
-                'name': line.product_id.name,
-                'product_id': line.product_id.id,
-            }) for line in con.utility_product_line_ids if line.state=='installed' ]
+
+            def product_line(line):
+                r = dict(product_id=line.product_id.id,
+                         **inv_line_obj.product_id_change(cr, uid, [], line.product_id.id, False, qty=1, partner_id=con.partner_id).get('value',{}))
+                if con.pricelist_id:
+                    r['price_unit'] = pricelist_obj.price_get(cr, uid, [con.pricelist_id.id],
+                                                              line.product_id.id,
+                                                              line.product_uom_qty,
+                                                              con.partner_id.id,
+                                                              { 'uom': line.product_uom.id, 'date': today(), }).get(con.pricelist_id.id, 0.0)
+                return r
+
+            products_to_add = [ (0,0, product_line(line)) for line in con.utility_product_line_ids if line.state=='installed']
 
             # No items to append from this contract.
             if not products_to_add:
