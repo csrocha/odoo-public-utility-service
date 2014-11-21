@@ -87,14 +87,21 @@ class account_analytic_account(osv.osv):
             # Items to append to invoices.
 
             def product_line(line):
+                price_unit = pricelist_obj.price_get(cr, uid, [con.pricelist_id.id],
+                                                     line.product_id.id,
+                                                     line.product_uom_qty,
+                                                     con.partner_id.id, { 'uom': line.product_uom.id, 'date': today(), }
+                                                    ).get(con.pricelist_id.id, 0.0) if con.pricelist_id else None
                 r = dict(product_id=line.product_id.id,
-                         **inv_line_obj.product_id_change(cr, uid, [], line.product_id.id, False, qty=1, partner_id=con.partner_id).get('value',{}))
-                if con.pricelist_id:
-                    r['price_unit'] = pricelist_obj.price_get(cr, uid, [con.pricelist_id.id],
-                                                              line.product_id.id,
-                                                              line.product_uom_qty,
-                                                              con.partner_id.id,
-                                                              { 'uom': line.product_uom.id, 'date': today(), }).get(con.pricelist_id.id, 0.0)
+                         **inv_line_obj.product_id_change(cr, uid, [],
+                                                          line.product_id.id,
+                                                          line.product_uom.id,
+                                                          line.product_uom_qty,
+                                                          price_unit=price_unit,
+                                                          partner_id=con.partner_id.id).get('value',{}))
+                r['price_unit'] = price_unit or r['price_unit']
+                if 'invoice_line_tax_id' in r:
+                    r['invoice_line_tax_id'] = [ (6, 0, r['invoice_line_tax_id']) ]
                 return r
 
             products_to_add = [ (0,0, product_line(line)) for line in con.utility_product_line_ids if line.state=='installed']
@@ -124,6 +131,7 @@ class account_analytic_account(osv.osv):
                     # Solo para la localización argentina. Muy triste :-(
                     'afip_service_start': period.date_start,
                     'afip_service_end': period.date_stop,
+                    'invoice_line': products_to_add
                 }
                 if con.invoice_journal_id: value['journal_id'] = con.invoice_journal_id.id
                 inv_id = inv_obj.create(cr, uid, value)
@@ -133,7 +141,10 @@ class account_analytic_account(osv.osv):
                 continue
 
             # Update invoice.
-            inv_obj.write(cr, uid, inv_id, { 'invoice_line': products_to_add })
+            else:
+                inv_obj.write(cr, uid, inv_id, { 'invoice_line': products_to_add })
+
+            # Take the invoice to return
             draft_inv_ids.append(inv_id)
 
             # Update contract list of invoices.
@@ -149,6 +160,8 @@ class account_analytic_account(osv.osv):
                     last_invoice = inv_obj.browse(cr, uid, inv_id)
                     # If last is validate then check, else no validate
                     validate = prev_invoice.state != 'draft'
+                    # Compute taxes before comparation
+                    last_invoice.button_compute()
                     # Compare last two invoices
                     ## first by amounts
                     validate = validate and (prev_invoice.amount_total == last_invoice.amount_total)
