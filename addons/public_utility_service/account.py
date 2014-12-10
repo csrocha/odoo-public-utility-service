@@ -37,6 +37,15 @@ class utility_product_lines(osv.osv):
 
 utility_product_lines()
 
+def address_format(shipping):
+    address = (shipping.street,
+               ", %s" % shipping.street2 if shipping.street2 else '',
+               shipping.city,
+               shipping.state_id.name,
+               ' (%s)' % shipping.zip if shipping.zip else '',
+               shipping.country_id.name)
+    return "%s%s\n%s, %s%s\n%s" % address
+
 class account_analytic_account(osv.osv):
     _name = 'account.analytic.account'
     _inherit = 'account.analytic.account'
@@ -86,7 +95,7 @@ class account_analytic_account(osv.osv):
         for con in self.browse(cr, uid, ids):
             # Items to append to invoices.
 
-            def product_line(line):
+            def product_line(line, shipping):
                 price_unit = pricelist_obj.price_get(cr, uid, [con.pricelist_id.id],
                                                      line.product_id.id,
                                                      line.product_uom_qty,
@@ -102,9 +111,10 @@ class account_analytic_account(osv.osv):
                 r['price_unit'] = price_unit or r['price_unit']
                 if 'invoice_line_tax_id' in r:
                     r['invoice_line_tax_id'] = [ (6, 0, r['invoice_line_tax_id']) ]
+                r['name'] = '%s;\n%s' % (r['name'], address_format(shipping))
                 return r
 
-            products_to_add = [ (0,0, product_line(line)) for line in con.utility_product_line_ids if line.state=='installed']
+            products_to_add = [ (0,0, product_line(line, con.partner_shipping_id)) for line in con.utility_product_line_ids if line.state=='installed']
 
             # No items to append from this contract.
             if not products_to_add:
