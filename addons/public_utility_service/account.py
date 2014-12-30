@@ -111,7 +111,6 @@ class account_analytic_account(osv.osv):
                 r['price_unit'] = price_unit or r['price_unit']
                 if 'invoice_line_tax_id' in r:
                     r['invoice_line_tax_id'] = [ (6, 0, r['invoice_line_tax_id']) ]
-                r['name'] = '%s;\n%s' % (r['name'], address_format(shipping))
                 return r
 
             products_to_add = [ (0,0, product_line(line, con.partner_shipping_id)) for line in con.utility_product_line_ids if line.state=='installed']
@@ -138,10 +137,11 @@ class account_analytic_account(osv.osv):
                     'date_invoice': period_obj.browse(cr, uid, next_period_id).date_start,
                     'origin': con.name,
                     'type': 'out_invoice',
+                    'invoice_line': products_to_add,
+                    'comment': _("Service Address: %s") % address_format(con.partner_shipping_id),
                     # Solo para la localización argentina. Muy triste :-(
                     'afip_service_start': period.date_start,
                     'afip_service_end': period.date_stop,
-                    'invoice_line': products_to_add
                 }
                 if con.invoice_journal_id: value['journal_id'] = con.invoice_journal_id.id
                 inv_id = inv_obj.create(cr, uid, value)
