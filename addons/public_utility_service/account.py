@@ -46,6 +46,14 @@ def address_format(shipping):
                shipping.country_id.name)
     return "%s%s\n%s, %s%s\n%s" % address
 
+class account_invoice(osv.osv):
+    _inherit = 'account.invoice'
+
+    _columns = {
+        'contract_fee_ids': fields.many2many('account.analytic.account', 'contract_fee_invoice', 'invoice_id', 'contract_fee_id', 'Contracts'),
+    }
+account_invoice()
+
 class account_analytic_account(osv.osv):
     _name = 'account.analytic.account'
     _inherit = 'account.analytic.account'
