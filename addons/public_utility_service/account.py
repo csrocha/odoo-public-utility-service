@@ -134,7 +134,6 @@ class account_analytic_account(osv.osv):
                     'account_id': con.partner_id.property_account_receivable.id,
                     'company_id': con.company_id.id,
                     'period_id': period_id,
-                    'date_invoice': period_obj.browse(cr, uid, next_period_id).date_start,
                     'origin': con.name,
                     'type': 'out_invoice',
                     'invoice_line': products_to_add,
