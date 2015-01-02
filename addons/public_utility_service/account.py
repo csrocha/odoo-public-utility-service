@@ -138,7 +138,8 @@ class account_analytic_account(osv.osv):
                     'origin': con.name,
                     'type': 'out_invoice',
                     'invoice_line': products_to_add,
-                    'comment': _("Service Address: %s") % address_format(con.partner_shipping_id),
+                    'comment': _("Contract: %s.\nService Address: %s") % (con.name,
+                                                                          address_format(con.partner_shipping_id)),
                     # Solo para la localización argentina. Muy triste :-(
                     'afip_service_start': period.date_start,
                     'afip_service_end': period.date_stop,
