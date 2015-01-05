@@ -33,6 +33,7 @@
                         <field name="invoice_journal_id"/>
                         <field name="invoices_automatic_validation"/>
                         <field name="invoices_no_change_validation" attrs="{'invisible':[('invoices_automatic_validation','=',False)]}"/>
+                        <field name="invoice_payment_term_id"/>
                     </group>
                     <label for="invoice_ids"/>
                     <field name="invoice_ids" readonly="1"/>
