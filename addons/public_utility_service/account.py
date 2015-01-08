@@ -71,7 +71,7 @@ class account_analytic_account(osv.osv):
         'invoice_ids': fields.many2many('account.invoice', 'contract_fee_invoice', 'contract_fee_id', 'invoice_id', 'Invoices'),
         'invoices_automatic_validation': fields.boolean('Automatic invoice validation'),
         'invoices_no_change_validation': fields.boolean('Only validate no changed invoices'),
-        'invoice_payment_term_id': fields.one2many('account.payment.term', 'Payment term'),
+        'invoice_payment_term_id': fields.many2one('account.payment.term', 'Payment term'),
 	}
 
     def pus_generate_invoice(self, cr, uid, ids=None, context=None, period_id=None, ):
