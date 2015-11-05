@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from osv import fields,osv
-from tools.translate import _
+from openerp.osv import fields,osv
+from openerp.tools.translate import _
 from openerp import netsvc
 
 class wiz_invoice_contract(osv.osv_memory):
@@ -20,7 +20,7 @@ class wiz_invoice_contract(osv.osv_memory):
         for wiz in self.browse(cr, uid, ids):
             c_ids = context.get('active_ids', [context.get('active_id', None)])
             res_ids.extend(contract_obj.pus_generate_invoice(cr, uid, c_ids, context=context, period_id=wiz.period_id.id))
-            
+
         # Generate action
         if len(res_ids) > 1:
             view_type = 'tree,form'
