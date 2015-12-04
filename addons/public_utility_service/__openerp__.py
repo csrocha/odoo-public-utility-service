@@ -22,7 +22,7 @@
 ##############################################################################
 {
     'name': 'Service Utility',
-    'version': '8.0.0.1',
+    'version': '8.0.1.0',
     'category': 'Account',
     'description': "Manage subscriptions to a utility service as contract.",
     'author': 'Moldeo Interactive',
@@ -41,8 +41,12 @@
         'data/product_view.xml',
         'data/contract_view.xml',
         'wizard/invoice_contract_data.xml',
+        'security/security.xml',
+        'security/ir.model.access.csv',
     ],
-    'test': [ 'test/generate_invoice.yml' ],
+    'test': [
+        'test/generate_invoice.yml'
+    ],
     'installable': True,
 }
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
