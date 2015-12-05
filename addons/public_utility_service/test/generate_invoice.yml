@@ -35,6 +35,7 @@
         use_utilities: True
         partner_id: base.res_partner_1
         partner_shipping_id: base.res_partner_1
+        invoice_journal_id: account.sales_journal
         utility_product_line_ids:
                 - product_id: product.product_product_1
                   state: installed
@@ -49,7 +50,7 @@
 -
  Test generate_invoice function.
 -
- !python {model: account.analytic.account}:
+ !python {model: account.analytic.account}: |
          self.pus_generate_invoice(cr, uid, [ref('utility_contract_1')])
 
 -
@@ -60,6 +61,7 @@
         use_utilities: True
         partner_id: base.res_partner_1
         partner_shipping_id: base.res_partner_1
+        invoice_journal_id: account.sales_journal
         utility_product_line_ids:
                 - product_id: product.product_product_1
                   state: installed
@@ -91,7 +93,6 @@
 -
  !python {model: account.analytic.account}: |
          from openerp import netsvc
-         import pdb; pdb.set_trace()
          wf_service = netsvc.LocalService("workflow")
          invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
          for inv in invoices:
