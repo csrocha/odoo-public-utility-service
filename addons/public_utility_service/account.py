@@ -8,6 +8,7 @@ import openerp.addons.decimal_precision as dp
 import logging
 _logger = logging.getLogger(__name__)
 
+
 def today():
     return datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
 
@@ -121,7 +122,8 @@ class account_analytic_account(models.Model):
         }
 
     def pus_generate_invoice(self, cr, uid, ids=None,
-                             context=None, period_id=None):
+                             context=None, period_id=None,
+                             validation_signal='invoice_open'):
         inv_obj = self.pool.get('account.invoice')
         pricelist_obj = self.pool.get('product.pricelist')
         inv_line_obj = self.pool.get('account.invoice.line')
@@ -253,7 +255,7 @@ class account_analytic_account(models.Model):
 
             # Can validate?
             if validate:
-                inv_obj.signal_workflow(cr, uid, [inv_id], 'invoice_open')
+                inv_obj.signal_workflow(cr, uid, [inv_id], validation_signal)
 
         return draft_inv_ids
 

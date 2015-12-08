@@ -22,7 +22,7 @@
 ##############################################################################
 {
     'name': 'Service Utility',
-    'version': '8.0.1.0',
+    'version': '8.0.2.0',
     'category': 'Account',
     'description': "Manage subscriptions to a utility service as contract.",
     'author': 'Moldeo Interactive',
