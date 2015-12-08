@@ -5,6 +5,8 @@ from datetime import datetime
 from operator import attrgetter
 import openerp.addons.decimal_precision as dp
 
+import logging
+_logger = logging.getLogger(__name__)
 
 def today():
     return datetime.today().strftime(DEFAULT_SERVER_DATETIME_FORMAT)
@@ -183,18 +185,27 @@ class account_analytic_account(models.Model):
                 continue
 
             # Take yet exists invoices with this periods and partner.
-            inv_id = inv_obj.search(cr, uid, [
+            inv_ids = inv_obj.search(cr, uid, [
                 ('period_id', '=', period_id),
                 ('partner_id', '=', con.partner_id.id),
                 ('state', '!=', 'cancel')])
-            inv_id = inv_id and inv_id.pop() or False
 
-            # I had this invoice in contract invoices?
-            if inv_id in [i.id for i in con.invoice_ids]:
+            # I had any invoice in the list of invoices in contract?
+            if [inv_id for inv_id in inv_ids if inv_id in con.invoice_ids.ids]:
+                _logger.info("Invoice yet exists in contract. Ignoring.")
                 continue
 
-            # If not invoice, create one.
+            # If invoices then take editables.
+            inv_ids = [inv['id']
+                       for inv in inv_obj.read(cr, uid, inv_ids, ['state'])
+                       if inv['state'] == 'draft'] + [False]
+
+            # Take one
+            inv_id = inv_ids.pop()
+
             if not inv_id:
+                # If not invoice, create one.
+                _logger.info(_("Creating invoice."))
                 value = con.pus_generate_invoice_data(period_id)
                 value.update({
                     'invoice_line': products_to_add,
@@ -203,13 +214,9 @@ class account_analytic_account(models.Model):
                     else value.get('journal_id', False)
                 })
                 inv_id = inv_obj.create(cr, uid, value)
-
-            # If invoice is not draft, I cant add any line.
-            elif inv_obj.browse(cr, uid, inv_id).state != 'draft':
-                continue
-
-            # Update invoice.
             else:
+                # Else update it.
+                _logger.info(_("Update invoice %i.") % inv_id)
                 inv_obj.write(cr, uid, inv_id,
                               {'invoice_line': products_to_add})
 

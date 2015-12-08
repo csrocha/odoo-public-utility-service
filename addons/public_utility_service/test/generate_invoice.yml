@@ -92,11 +92,9 @@
  Hand made invoice validation.
 -
  !python {model: account.analytic.account}: |
-         from openerp import netsvc
-         wf_service = netsvc.LocalService("workflow")
          invoices = self.browse(cr, uid, ref('utility_contract_2')).invoice_ids
          for inv in invoices:
-                 wf_service.trg_validate(uid, 'account.invoice', inv.id, 'invoice_open', cr)
+                 inv.signal_workflow('invoice_open')
 
 -
  Check invoice validation.
