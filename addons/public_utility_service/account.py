@@ -170,6 +170,7 @@ class account_analytic_account(models.Model):
         # Find all contract without validated invoices in period
         def _test_(c):
             periods = c.invoice_ids.mapped('period_id')
+            _logger.info("%s in %s " % (str(period), str(periods)))
             r = (period in periods and
                  set(c.invoice_ids.filtered(
                      lambda i: i.period_id == period
@@ -233,7 +234,7 @@ class account_analytic_account(models.Model):
 
             # No items to append from this contract.
             if not products_to_add:
-                _logger.info("Contract without products. Ignoring.")
+                _logger.info("Contract without installed products. Ignoring.")
                 continue
 
             # Take yet exists invoices with this periods and partner.
