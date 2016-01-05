@@ -231,6 +231,7 @@ class account_analytic_account(models.Model):
                 _logger.info(_("Creating invoice."))
                 value = con.pus_generate_invoice_data(period.id)
                 value.update({
+                    'origin': con.name,
                     'invoice_line': products_to_add,
                     'journal_id': con.invoice_journal_id.id
                     if con.invoice_journal_id
@@ -257,18 +258,5 @@ class account_analytic_account(models.Model):
                 inv.signal_workflow(validation_signal)
 
         return return_inv
-
-    @api.multi
-    @api.model
-    def get_draft_invoices(self):
-        """
-        Return all invoices in draft associated to contracts.
-        """
-        inv_ids = [inv.id
-                   for inv in con.invoices_ids
-                   for con in self
-                   if inv.state == 'draft']
-
-        return inv_ids
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
