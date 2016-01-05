@@ -1,31 +1,43 @@
 # -*- coding: utf-8 -*-
-from openerp.osv import fields,osv
-from openerp.tools.translate import _
-from openerp import netsvc
+from openerp import models, fields, api, _
 
-class wiz_invoice_contract(osv.osv_memory):
+
+class wiz_invoice_contract(models.TransientModel):
     _name = 'pus.wiz_invoice_contract'
     _description = 'pus.wiz_invoice_contract'
 
-    _columns = {
-        'period_id': fields.many2one('account.period', 'Period'),
-    }
+    period_id = fields.Many2one(
+        'account.period',
+        string='Period')
+    validation_signal = fields.Selection(
+        selection=[
+            ('invoice_open', 'Validate'),
+            ('invoice_delay', 'Wait for Validation')
+        ],
+        string='State')
 
-    def execute(self, cr, uid, ids, context=None):
-        contract_obj = self.pool.get('account.analytic.account')
-        context = context or {}
+    @api.multi
+    def execute(self):
+        self.ensure_one()
+
+        contract_obj = self.env['account.analytic.account']
         view_type = 'form,tree'
 
-        res_ids = []
-        for wiz in self.browse(cr, uid, ids):
-            c_ids = context.get('active_ids', [context.get('active_id', None)])
-            res_ids.extend(contract_obj.pus_generate_invoice(cr, uid, c_ids, context=context, period_id=wiz.period_id.id))
+        context = self.env.context
+        c_ids = context.get('active_ids', [context.get('active_id', None)])
+
+        res_ids = contract_obj.browse(c_ids).pus_generate_invoice(
+            period_id=wiz.period_id.id,
+            validation_signal=wiz.validation_signal
+        ))
 
         # Generate action
+
         if len(res_ids) > 1:
             view_type = 'tree,form'
-            domain = "[('id','in',["+','.join(map(str, res_ids))+"]),('user_id', '=', uid)]"
-        elif len(res_ids)==1:
+            domain = "[('id','in',["+','.join(map(str, res_ids))+"])," \
+                "('user_id', '=', uid)]"
+        elif len(res_ids) == 1:
             domain = "[('user_id', '=', uid)]"
         else:
             view_type = 'tree,form'
