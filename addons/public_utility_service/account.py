@@ -121,50 +121,76 @@ class account_analytic_account(models.Model):
                 address_format(self.partner_shipping_id)),
         }
 
-    def pus_generate_invoice(self, cr, uid, ids=None,
-                             context=None, period_id=None,
+    @api.multi
+    def _pus_auto_validation(self, inv):
+        """
+        Check if invoice can auto validated.
+        """
+        self.ensure_one()
+        con = self
+
+        # Automatic validation
+        validate = con.invoices_automatic_validation
+        if validate and con.invoices_no_change_validation:
+            # If change invoice beetween last validated invoice
+            # then no validate
+            invoices = sorted(con.invoice_ids,
+                              key=attrgetter('date_invoice'))
+            if invoices:
+                prev_invoice = invoices[-1]
+                last_invoice = inv
+                # Compute taxes before comparation
+                last_invoice.button_compute()
+                # If last is validate then check, else no validate
+                validate = prev_invoice.state != 'draft'
+                # Compare last two invoices
+                # - first by amounts
+                validate = validate and (
+                    prev_invoice.amount_total == last_invoice.amount_total)
+                # - late by partner
+                validate = validate and (
+                    prev_invoice.partner_id.id
+                    == last_invoice.partner_id.id)
+            else:
+                validate = False
+
+        return validate
+
+    @api.multi
+    @api.model
+    def pus_generate_invoice(self,
+                             period_id=None,
                              validation_signal='invoice_open'):
-        inv_obj = self.pool.get('account.invoice')
-        pricelist_obj = self.pool.get('product.pricelist')
-        inv_line_obj = self.pool.get('account.invoice.line')
-        period_obj = self.pool.get('account.period')
+        inv_obj = self.env['account.invoice']
+        inv_line_obj = self.env['account.invoice.line']
+        period_obj = self.env['account.period']
 
-        _ids = self.search(cr, uid, [('id', 'in', ids) if ids
-                                     else ('id', '>=', 0),
-                                     ('use_utilities', '=', 'True'),
-                                     ('state', '=', 'open')])
-
-        ids = _ids
-        draft_inv_ids = []
+        self = self.search([('id', 'in', self.ids) if self.ids
+                            else ('id', '>=', 0),
+                            ('use_utilities', '=', 'True'),
+                            ('state', '=', 'open')])
 
         # Take period if not defined
-        if not period_id:
-            period_id = period_obj.find(cr, uid, today(), context=context)
-            if not len(period_id) > 0:
-                raise Warning("There is no opening/closing period defined,"
-                              " please create one to set the initial balance.")
-            period_id = period_id[0]
+        period = period_obj.browse(period_id) \
+            if period_id else period_obj.find()
+        period_obj.next(period, 1)
 
-        period = period_obj.browse(cr, uid, period_id)
-        next_period_id = period_obj.next(cr, uid, period, 1)
+        draft_inv_ids = []
+        for con in self:
+            _logger.info(_("Generating invoices from contract %s.") % con.name)
 
-        if not next_period_id:
-            raise Warning("There is no opening/closing period defined,"
-                          " please create one to set the initial balance.")
-
-        for con in self.browse(cr, uid, ids):
             # Items to append to invoices.
             def product_line(line, shipping):
-                price_unit = pricelist_obj.price_get(
-                    cr, uid, [con.pricelist_id.id],
+                price_unit = con.pricelist_id.with_context(
+                    uom=line.product_uom.id, date=today()
+                ).price_get(
                     line.product_id.id,
                     line.product_uom_qty,
                     con.partner_id.id,
-                    {'uom': line.product_uom.id, 'date': today()}
                 ).get(con.pricelist_id.id, 0.0) if con.pricelist_id else None
+
                 r = dict(product_id=line.product_id.id,
                          **inv_line_obj.product_id_change(
-                             cr, uid, [],
                              line.product_id.id,
                              line.product_uom.id,
                              line.product_uom_qty,
@@ -184,97 +210,65 @@ class account_analytic_account(models.Model):
 
             # No items to append from this contract.
             if not products_to_add:
+                _logger.info("Contract without products. Ignoring.")
                 continue
 
             # Take yet exists invoices with this periods and partner.
-            inv_ids = inv_obj.search(cr, uid, [
-                ('period_id', '=', period_id),
+            invs = inv_obj.search([
+                ('period_id', '=', period.id),
                 ('partner_id', '=', con.partner_id.id),
                 ('state', '!=', 'cancel')])
 
             # I had any invoice in the list of invoices in contract?
-            if [inv_id for inv_id in inv_ids if inv_id in con.invoice_ids.ids]:
+            if [inv for inv in invs if inv in con.invoice_ids]:
                 _logger.info("Invoice yet exists in contract. Ignoring.")
                 continue
 
             # If invoices then take editables.
-            inv_ids = [inv['id']
-                       for inv in inv_obj.read(cr, uid, inv_ids, ['state'])
-                       if inv['state'] == 'draft'] + [False]
+            invs = invs.filtered(lambda i: i.state == 'draft')
 
-            # Take one
-            inv_id = inv_ids.pop()
-
-            if not inv_id:
+            if not invs:
                 # If not invoice, create one.
-                _logger.info(_("Creating invoice from contract %s.") %
-                             conn.name)
-                value = con.pus_generate_invoice_data(period_id)
+                _logger.info(_("Creating invoice."))
+                value = con.pus_generate_invoice_data(period.id)
                 value.update({
                     'invoice_line': products_to_add,
                     'journal_id': con.invoice_journal_id.id
                     if con.invoice_journal_id
                     else value.get('journal_id', False)
                 })
-                inv_id = inv_obj.create(cr, uid, value)
+                inv = inv_obj.create(value)
             else:
                 # Else update it.
-                _logger.info(_("Update invoice %i.") % inv_id)
-                inv_obj.write(cr, uid, inv_id,
-                              {'invoice_line': products_to_add})
+                invs.ensure_one()
+                _logger.info(_("Update invoice %i.") % invs.id)
+                invs.write({'invoice_line': products_to_add})
+                inv = invs
 
             # Take the invoice to return
-            draft_inv_ids.append(inv_id)
+            draft_inv_ids.append(inv.id)
 
             # Update contract list of invoices.
-            self.write(cr, uid, con.id, {'invoice_ids': [(4, inv_id)]})
-
-            # Automatic validation
-            validate = con.invoices_automatic_validation
-            if validate and con.invoices_no_change_validation:
-                # If change invoice beetween last validated invoice
-                # then no validate
-                invoices = sorted(con.invoice_ids,
-                                  key=attrgetter('date_invoice'))
-                if invoices:
-                    prev_invoice = invoices[-1]
-                    last_invoice = inv_obj.browse(cr, uid, inv_id)
-                    # Compute taxes before comparation
-                    last_invoice.button_compute()
-                    # If last is validate then check, else no validate
-                    validate = prev_invoice.state != 'draft'
-                    # Compare last two invoices
-                    # - first by amounts
-                    validate = validate and (
-                        prev_invoice.amount_total == last_invoice.amount_total)
-                    # - late by partner
-                    validate = validate and (
-                        prev_invoice.partner_id.id
-                        == last_invoice.partner_id.id)
-                else:
-                    validate = False
+            con.write({'invoice_ids': [(4, inv.id)]})
 
             # Can validate?
-            if validate:
-                inv_obj.signal_workflow(cr, uid, [inv_id], validation_signal)
+            if validation_signal and con._pus_auto_validation(inv):
+                _logger.info(_("Send signal %s to invoice %s.") %
+                             (validation_signal, inv.id))
+                inv.signal_workflow(validation_signal)
 
         return draft_inv_ids
 
-    def get_draft_invoices(self, cr, uid, ids=None, context=None):
+    @api.multi
+    @api.model
+    def get_draft_invoices(self):
         """
         Return all invoices in draft associated to contracts.
         """
-        ids = self.search(cr, uid, [
-            ('id', 'in', ids) if ids else ('id', '>=', 0),
-            ('use_utilities', '=', 'True'),
-            ('state', '=', 'open')])
-
-        inv_ids = []
-
-        for con in self.browse(cr, uid, ids):
-            for inv in con.invoice_ids:
-                if inv.state == 'draft':
-                    inv_ids.append(inv.id)
+        inv_ids = [inv.id
+                   for inv in con.invoices_ids
+                   for con in self
+                   if inv.state == 'draft']
 
         return inv_ids
 
