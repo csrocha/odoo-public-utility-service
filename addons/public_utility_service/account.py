@@ -157,13 +157,14 @@ class account_analytic_account(models.Model):
 
     @api.model
     def pus_to_process(self):
+        period_obj = self.env['account.period']
+
         # Take all valid contracts
         contracts = self.search([('use_utilities', '=', 'True'),
                                  ('state', '=', 'open')])
 
         # Take period if not defined
-        period = period_obj.browse(period_id) \
-            if period_id else period_obj.find()
+        period = period_obj.find()
         period_obj.next(period, 1)
 
         # Find all contract without validated invoices in period
