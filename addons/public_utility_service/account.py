@@ -155,6 +155,29 @@ class account_analytic_account(models.Model):
 
         return validate
 
+    @api.model
+    def pus_to_process(self):
+        # Take all valid contracts
+        contracts = self.search([('use_utilities', '=', 'True'),
+                                 ('state', '=', 'open')])
+
+        # Take period if not defined
+        period = period_obj.browse(period_id) \
+            if period_id else period_obj.find()
+        period_obj.next(period, 1)
+
+        # Find all contract without validated invoices in period
+        def _test_(c):
+            periods = c.invoice_ids.mapped('period_id')
+            r = (period in periods and
+                 set(c.invoice_ids.filtered(
+                     lambda i: i.period_id == period
+                     ).mapped('state')) == set(['draft'])
+                 ) or (period not in periods)
+            return r
+
+        return contracts.filtered(_test_)
+
     @api.multi
     @api.model
     def pus_generate_invoice(self,
