@@ -9,6 +9,7 @@
            <form string="Generate invoices" version="7.0">
                <group string="General parameters">
                    <field name="period_id"/>
+                   <field name="validation_signal"/>
                </group>
                <footer>
                    <button string="Execute" name="execute" type="object" icon="gtk-ok" colspan="2"/>
