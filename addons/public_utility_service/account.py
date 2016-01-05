@@ -172,11 +172,11 @@ class account_analytic_account(models.Model):
             period_ids = c.invoice_ids.mapped('period_id').ids
             _logger.info("%s: %s in %s " %
                          (c.name, period.id, period_ids))
-            r = (period.id in periods and
+            r = (period.id in period_ids and
                  set(c.invoice_ids.filtered(
                      lambda i: i.period_id == period
                      ).mapped('state')) == set(['draft'])
-                 ) or (period.id not in periods)
+                 ) or (period.id not in period_ids)
             return r
 
         return contracts.filtered(_test_)
