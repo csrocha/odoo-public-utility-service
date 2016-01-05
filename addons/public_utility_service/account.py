@@ -171,7 +171,7 @@ class account_analytic_account(models.Model):
         def _test_(c):
             period_ids = c.invoice_ids.mapped('period_id').ids
             _logger.info("%s: %s in %s " %
-                         (c.name, period.id, periods.ids))
+                         (c.name, period.id, period_ids))
             r = (period.id in periods and
                  set(c.invoice_ids.filtered(
                      lambda i: i.period_id == period
