@@ -29,7 +29,7 @@ class wiz_invoice_contract(models.TransientModel):
         res_ids = contract_obj.browse(c_ids).pus_generate_invoice(
             period_id=wiz.period_id.id,
             validation_signal=wiz.validation_signal
-        ))
+        )
 
         # Generate action
 
