@@ -27,8 +27,8 @@ class wiz_invoice_contract(models.TransientModel):
         c_ids = context.get('active_ids', [context.get('active_id', None)])
 
         res_ids = contract_obj.browse(c_ids).pus_generate_invoice(
-            period_id=wiz.period_id.id,
-            validation_signal=wiz.validation_signal
+            period_id=self.period_id.id,
+            validation_signal=self.validation_signal
         )
 
         # Generate action
