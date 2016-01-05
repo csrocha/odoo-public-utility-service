@@ -71,7 +71,6 @@ class account_invoice(models.Model):
 
 
 class account_analytic_account(models.Model):
-    _name = 'account.analytic.account'
     _inherit = 'account.analytic.account'
 
     def _get_day_of_months(self, cr, uid, context=None):
@@ -175,7 +174,7 @@ class account_analytic_account(models.Model):
             if period_id else period_obj.find()
         period_obj.next(period, 1)
 
-        draft_inv_ids = []
+        return_inv = inv_obj.browse([])
         for con in self:
             _logger.info(_("Generating invoices from contract %s.") % con.name)
 
@@ -246,7 +245,7 @@ class account_analytic_account(models.Model):
                 inv = invs
 
             # Take the invoice to return
-            draft_inv_ids.append(inv.id)
+            return_inv |= inv
 
             # Update contract list of invoices.
             con.write({'invoice_ids': [(4, inv.id)]})
@@ -257,7 +256,7 @@ class account_analytic_account(models.Model):
                              (validation_signal, inv.id))
                 inv.signal_workflow(validation_signal)
 
-        return draft_inv_ids
+        return return_inv
 
     @api.multi
     @api.model
@@ -271,8 +270,5 @@ class account_analytic_account(models.Model):
                    if inv.state == 'draft']
 
         return inv_ids
-
-
-account_analytic_account()
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
