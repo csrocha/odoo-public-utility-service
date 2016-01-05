@@ -207,7 +207,8 @@ class account_analytic_account(models.Model):
 
             if not inv_id:
                 # If not invoice, create one.
-                _logger.info(_("Creating invoice."))
+                _logger.info(_("Creating invoice from contract %s.") %
+                             conn.name)
                 value = con.pus_generate_invoice_data(period_id)
                 value.update({
                     'invoice_line': products_to_add,
