@@ -170,7 +170,8 @@ class account_analytic_account(models.Model):
         # Find all contract without validated invoices in period
         def _test_(c):
             periods = c.invoice_ids.mapped('period_id')
-            _logger.info("%s: %s in %s " % (str(c), str(period), str(periods)))
+            _logger.info("%s: %s in %s " %
+                         (c.name, period.name, periods.mapped('name')))
             r = (period in periods and
                  set(c.invoice_ids.filtered(
                      lambda i: i.period_id == period
