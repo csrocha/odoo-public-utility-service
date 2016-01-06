@@ -188,6 +188,12 @@ class account_analytic_account(models.Model):
     @api.model
     def pus_to_process(self):
         operations = self.pus_operations()
+
+        _logger.info("Contracts to create %i, %i to update and %i for none" %
+                     (len(operations['create']),
+                      len(operations['update']),
+                      len(operations['none'])))
+
         return operations['create'] | operations['update']
 
     @api.multi
