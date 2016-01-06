@@ -241,7 +241,7 @@ class account_analytic_account(models.Model):
             # Take yet exists invoices with this periods and partner.
             invs = inv_obj.search([
                 ('period_id', '=', period.id),
-                ('contract_fee_ids', 'in', con.id)
+                ('contract_fee_ids', 'in', con.id),
                 ('state', '!=', 'cancel')])
 
             if not invs:
