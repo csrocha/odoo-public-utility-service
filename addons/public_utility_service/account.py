@@ -102,23 +102,28 @@ class account_analytic_account(models.Model):
         string='Payment term')
 
     @api.multi
-    def pus_generate_invoice_data(self, period_id):
+    def _pus_generate_invoice_data(self, period):
         """
         Use this function to update invoice information.
         """
         self.ensure_one()
-        return {
+        values = {
             'partner_id': self.partner_invoice_id.id or self.partner_id.id,
             'account_id': self.partner_id.property_account_receivable.id,
             'company_id': self.company_id.id,
-            'period_id': period_id,
+            'period_id': period.id,
             'origin': self.name,
             'type': 'out_invoice',
             'payment_term': self.invoice_payment_term_id.id,
             'comment': _("Contract: %s.\nService Address: %s") % (
                 self.name,
                 address_format(self.partner_shipping_id)),
+            'origin': self.name,
+            'journal_id': self.invoice_journal_id.id
+            if self.invoice_journal_id else False,
+            'invoice_line': self._pus_get_invoice_lines(),
         }
+        return { k: v for k,v, in values.items() if v }
 
     @api.multi
     def _pus_auto_validation(self, inv):
@@ -155,23 +160,24 @@ class account_analytic_account(models.Model):
 
         return validate
 
-    @api.model
-    def pus_operations(self):
-        period_obj = self.env['account.period']
-
+    @api.multi
+    def _pus_operations(self, period):
         # Take all valid contracts
-        contracts = self.search([('use_utilities', '=', 'True'),
-                                 ('state', '=', 'open')])
+        contracts = self.search([
+            ('id', 'in', self.ids) if self.ids else ('1', '=', '1')
+            ('use_utilities', '=', 'True'),
+            ('state', '=', 'open')
+        ])
 
         # Take period if not defined
-        period = period_obj.find()
-        period_obj.next(period, 1)
+        period = period or period.find()
 
         operation = {
             'update': self.browse([]),
             'create': self.browse([]),
             'none': self.browse([]),
         }
+
         for con in contracts:
             period_ids = con.invoice_ids.mapped('period_id').ids
             op = 'update' if (
@@ -185,119 +191,130 @@ class account_analytic_account(models.Model):
 
         return operation
 
-    @api.model
-    def pus_to_process(self):
-        operations = self.pus_operations()
+    @api.multi
+    def _pus_get_invoice_lines(self):
+        """
+        Return invoice lines from contract
+        """
+        self.ensure_one()
+        inv_line_obj = self.env['account.invoice.line']
 
-        _logger.info("Contracts to create %i, %i to update and %i for none" %
-                     (len(operations['create']),
-                      len(operations['update']),
-                      len(operations['none'])))
+        def product_line(con, line):
+            price_unit = con.pricelist_id.with_context(
+                uom=line.product_uom.id, date=today()
+            ).price_get(
+                line.product_id.id,
+                line.product_uom_qty,
+                con.partner_id.id,
+            ).get(con.pricelist_id.id, 0.0) if con.pricelist_id else None
 
-        return operations['create'] | operations['update']
+            r = dict(product_id=line.product_id.id,
+                     **inv_line_obj.product_id_change(
+                         line.product_id.id,
+                         line.product_uom.id,
+                         line.product_uom_qty,
+                         price_unit=price_unit,
+                         partner_id=con.partner_id.id).get('value', {}))
+            r['price_unit'] = price_unit or r['price_unit']
+            if 'invoice_line_tax_id' in r:
+                r['invoice_line_tax_id'] = [(6, 0, r['invoice_line_tax_id'])]
+            return r
+
+        return [(0, 0, product_line(self, line))
+                for line in self.utility_product_line_ids
+                if line.state == 'installed']
+
+    @api.multi
+    def _pus_create_invoice(self, period):
+        self.ensure_one()
+        inv_obj = self.env['account.invoice']
+
+        products_to_add = self._pus_get_invoice_lines()
+
+        # No items to append from this contract.
+        if not products_to_add:
+            _logger.info(_("Contract %s without installed products.")
+                         % self.name)
+            return inv_obj.browse([])
+
+        # Take yet exists invoices with this periods and partner.
+        invs = inv_obj.search([
+            ('period_id', '=', period.id),
+            ('contract_fee_ids', 'in', self.id),
+            ('state', '!=', 'cancel')])
+
+        # If not invoice, create one.
+        if not invs:
+            _logger.info(_("Creating invoice for contract %s.") % self.name)
+            inv = inv_obj.create(self._pus_generate_invoice_data(period))
+            self.write({'invoice_ids': [(4, inv.id)]})
+            return inv
+
+        return inv_obj.browse([])
+
+    @api.multi
+    def _pus_update_invoice(self, period):
+        self.ensure_one()
+        inv_obj = self.env['account.invoice']
+
+        products_to_add = self.pus_get_invoice_lines()
+
+        # No items to append from this contract.
+        if not products_to_add:
+            _logger.info(_("Contract %s without installed products.")
+                         % self.name)
+            return inv_obj.browse([])
+
+        # Take yet exists invoices with this periods and partner.
+        invs = inv_obj.search([
+            ('period_id', '=', period.id),
+            ('contract_fee_ids', 'in', self.id),
+            ('state', '=', 'draft')])
+
+        # If not editables then ignore all.
+        if not invs:
+            _logger.info(_("No invoices update for %s.") % self.name)
+            return inv_obj.browse([])
+
+        # Else update it.
+        invs.ensure_one()
+        _logger.info(_("Update invoice %i.") % invs.id)
+        invs.write({'invoice_line': [(5, 0, 0)] + products_to_add})
+
+        return invs
 
     @api.multi
     @api.model
     def pus_generate_invoice(self,
                              period_id=None,
                              validation_signal='invoice_open'):
-        inv_obj = self.env['account.invoice']
-        inv_line_obj = self.env['account.invoice.line']
         period_obj = self.env['account.period']
 
-        self = self.search([('id', 'in', self.ids) if self.ids
-                            else ('id', '>=', 0),
-                            ('use_utilities', '=', 'True'),
-                            ('state', '=', 'open')])
+        period = period_obj.browse(period_id)
+        operations = self._pus_operations(period)
 
-        # Take period if not defined
-        period = period_obj.browse(period_id) \
-            if period_id else period_obj.find()
-        period_obj.next(period, 1)
+        _logger.info("Contracts to create %i, %i to update and %i for none" %
+                     (len(operations['create']),
+                      len(operations['update']),
+                      len(operations['none'])))
 
-        return_inv = inv_obj.browse([])
-        for con in self:
-            _logger.info(_("Generating invoices from contract %s.") % con.name)
+        ret_inv = self.env['account.invoice'].browse([])
 
-            # Items to append to invoices.
-            def product_line(line, shipping):
-                price_unit = con.pricelist_id.with_context(
-                    uom=line.product_uom.id, date=today()
-                ).price_get(
-                    line.product_id.id,
-                    line.product_uom_qty,
-                    con.partner_id.id,
-                ).get(con.pricelist_id.id, 0.0) if con.pricelist_id else None
+        for con in operations['create']:
+            inv = con._pus_create_invoice(period)
 
-                r = dict(product_id=line.product_id.id,
-                         **inv_line_obj.product_id_change(
-                             line.product_id.id,
-                             line.product_uom.id,
-                             line.product_uom_qty,
-                             price_unit=price_unit,
-                             partner_id=con.partner_id.id).get('value', {}))
-                r['price_unit'] = price_unit or r['price_unit']
-                if 'invoice_line_tax_id' in r:
-                    r['invoice_line_tax_id'] = [
-                        (6, 0, r['invoice_line_tax_id'])
-                    ]
-                return r
-
-            products_to_add = [
-                (0, 0, product_line(line, con.partner_shipping_id))
-                for line in con.utility_product_line_ids
-                if line.state == 'installed']
-
-            # No items to append from this contract.
-            if not products_to_add:
-                _logger.info("Contract without installed products. Ignoring.")
-                continue
-
-            # Take yet exists invoices with this periods and partner.
-            invs = inv_obj.search([
-                ('period_id', '=', period.id),
-                ('contract_fee_ids', 'in', con.id),
-                ('state', '!=', 'cancel')])
-
-            if not invs:
-                # If not invoice, create one.
-                _logger.info(_("Creating invoice."))
-                value = con.pus_generate_invoice_data(period.id)
-                value.update({
-                    'origin': con.name,
-                    'invoice_line': products_to_add,
-                    'journal_id': con.invoice_journal_id.id
-                    if con.invoice_journal_id
-                    else value.get('journal_id', False)
-                })
-                inv = inv_obj.create(value)
-            else:
-                # If invoices then take editables.
-                invs = invs.filtered(lambda i: i.state == 'draft')
-
-                # If not editables then ignore all.
-                if not invs:
-                    _logger.info("Invoice yet exists in contract. Ignoring.")
-                    continue
-
-                # Else update it.
-                invs.ensure_one()
-                _logger.info(_("Update invoice %i.") % invs.id)
-                invs.write({'invoice_line': [(5, 0, 0)] + products_to_add})
-                inv = invs
-
-            # Take the invoice to return
-            return_inv |= inv
-
-            # Update contract list of invoices.
-            con.write({'invoice_ids': [(4, inv.id)]})
-
-            # Can validate?
             if validation_signal and con._pus_auto_validation(inv):
                 _logger.info(_("Send signal %s to invoice %s.") %
                              (validation_signal, inv.id))
                 inv.signal_workflow(validation_signal)
 
-        return return_inv.ids
+            ret_inv |= inv
+
+        for con in operations['update']:
+            inv = con._pus_update_invoice(period)
+
+            ret_inv |= inv
+
+        return ret_inv.ids
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
