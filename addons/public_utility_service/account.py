@@ -156,7 +156,7 @@ class account_analytic_account(models.Model):
         return validate
 
     @api.model
-    def pus_to_process(self):
+    def pus_operations(self):
         period_obj = self.env['account.period']
 
         # Take all valid contracts
@@ -167,19 +167,28 @@ class account_analytic_account(models.Model):
         period = period_obj.find()
         period_obj.next(period, 1)
 
-        # Find all contract without validated invoices in period
-        def _test_(c):
-            period_ids = c.invoice_ids.mapped('period_id').ids
-            _logger.info("%s: %s in %s " %
-                         (c.name, period.id, period_ids))
-            r = (period.id in period_ids and
-                 set(c.invoice_ids.filtered(
-                     lambda i: i.period_id == period
-                     ).mapped('state')) == set(['draft'])
-                 ) or (period.id not in period_ids)
-            return r
+        operation = {
+            'update': self.browse([]),
+            'create': self.browse([]),
+            'none': self.browse([]),
+        }
+        for con in contracts:
+            period_ids = con.invoice_ids.mapped('period_id').ids
+            op = 'update' if (
+                period.id in period_ids and
+                set(con.invoice_ids.filtered(
+                    lambda i: i.period_id == period
+                ).mapped('state')) == set(['draft'])
+            ) else 'create' if (period.id not in period_ids) else 'none'
 
-        return contracts.filtered(_test_)
+            operation[op] |= con
+
+        return operation
+
+    @api.model
+    def pus_to_process(self):
+        operations = self.pus_operations()
+        return operations['create'] | operations['update']
 
     @api.multi
     @api.model
@@ -268,7 +277,7 @@ class account_analytic_account(models.Model):
                 # Else update it.
                 invs.ensure_one()
                 _logger.info(_("Update invoice %i.") % invs.id)
-                invs.write({'invoice_line': products_to_add})
+                invs.write({'invoice_line': [(5, 0, 0)] + products_to_add})
                 inv = invs
 
             # Take the invoice to return
