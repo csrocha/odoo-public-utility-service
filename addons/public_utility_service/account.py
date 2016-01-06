@@ -241,16 +241,8 @@ class account_analytic_account(models.Model):
             # Take yet exists invoices with this periods and partner.
             invs = inv_obj.search([
                 ('period_id', '=', period.id),
-                ('partner_id', '=', con.partner_id.id),
+                ('contract_fee_ids', 'in', con.id)
                 ('state', '!=', 'cancel')])
-
-            # I had any invoice in the list of invoices in contract?
-            if [inv for inv in invs if inv in con.invoice_ids]:
-                _logger.info("Invoice yet exists in contract. Ignoring.")
-                continue
-
-            # If invoices then take editables.
-            invs = invs.filtered(lambda i: i.state == 'draft')
 
             if not invs:
                 # If not invoice, create one.
@@ -265,6 +257,14 @@ class account_analytic_account(models.Model):
                 })
                 inv = inv_obj.create(value)
             else:
+                # If invoices then take editables.
+                invs = invs.filtered(lambda i: i.state == 'draft')
+
+                # If not editables then ignore all.
+                if not invs:
+                    _logger.info("Invoice yet exists in contract. Ignoring.")
+                    continue
+
                 # Else update it.
                 invs.ensure_one()
                 _logger.info(_("Update invoice %i.") % invs.id)
