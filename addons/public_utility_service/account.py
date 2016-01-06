@@ -161,7 +161,7 @@ class account_analytic_account(models.Model):
         return validate
 
     @api.multi
-    def _pus_operations(self, period):
+    def pus_operations(self, period):
         # Take all valid contracts
         contracts = self.search([
             ('id', 'in', self.ids) if self.ids else ('1', '=', '1')
@@ -287,11 +287,12 @@ class account_analytic_account(models.Model):
     @api.model
     def pus_generate_invoice(self,
                              period_id=None,
+                             operations=None,
                              validation_signal='invoice_open'):
-        period_obj = self.env['account.period']
+        per_obj = self.env['account.period']
 
-        period = period_obj.browse(period_id)
-        operations = self._pus_operations(period)
+        period = per_obj.browse(period_id) if period_id else per_obj.find()
+        operations = operations if operations else self.pus_operations(period)
 
         _logger.info("Contracts to create %i, %i to update and %i for none" %
                      (len(operations['create']),
