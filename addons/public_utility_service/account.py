@@ -283,6 +283,6 @@ class account_analytic_account(models.Model):
                              (validation_signal, inv.id))
                 inv.signal_workflow(validation_signal)
 
-        return return_inv
+        return return_inv.ids
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
