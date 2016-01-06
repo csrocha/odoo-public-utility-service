@@ -164,7 +164,7 @@ class account_analytic_account(models.Model):
     def pus_operations(self, period):
         # Take all valid contracts
         contracts = self.search([
-            ('id', 'in', self.ids) if self.ids else ('1', '=', '1')
+            ('id', 'in', self.ids) if self.ids else ('1', '=', '1'),
             ('use_utilities', '=', 'True'),
             ('state', '=', 'open')
         ])
