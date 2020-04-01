@@ -141,6 +141,7 @@ class account_analytic_account(models.Model):
             'company_id': self.company_id.id,
             'period_id': period.id,
             'origin': self.name,
+            'user_id': self.manager_id.id,
             'type': 'out_invoice',
             'payment_term': self.invoice_payment_term_id.id,
             'comment': _("Contract: %s.\nService Address: %s") % (
