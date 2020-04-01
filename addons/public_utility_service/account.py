@@ -5,8 +5,36 @@ from datetime import datetime
 from operator import attrgetter
 import openerp.addons.decimal_precision as dp
 
+import os
 import logging
 _logger = logging.getLogger(__name__)
+
+
+def lock(default_value):
+
+    def parent(f):
+
+        lock_file = f"/tmp/{f.__name__}.lock"
+
+        def inner(*argv, **kwargs):
+
+            if os.path.isfile(lock_file):
+                    _logger.info("pus_generate_invoice is running or locked. Ignore process")
+                    return default_value
+
+            open(lock_file, 'a').close()
+
+            try:
+                return f(*argv, **kwargs)
+            except e:
+                raise e
+            finally:
+                _logger.info("pus_generate_invoice is unlocked.")
+                os.remove(lock_file)
+
+        return inner
+
+    return parent
 
 
 def today():
@@ -285,6 +313,7 @@ class account_analytic_account(models.Model):
 
     @api.multi
     @api.model
+    @lock([])
     def pus_generate_invoice(self,
                              period_id=None,
                              operations=None,
