@@ -14,13 +14,15 @@ def lock(default_value):
 
     def parent(f):
 
-        lock_file = f"/tmp/{f.__name__}.lock"
+        lock_file = "/tmp/{name}.lock".format(name=f.__name__)
 
         def inner(*argv, **kwargs):
 
             if os.path.isfile(lock_file):
-                    _logger.info("pus_generate_invoice is running or locked. Ignore process")
-                    return default_value
+                _logger.info("pus_generate_invoice:{name}"
+                             " is running or locked. Ignore process"
+                             .format(name=f.__name__))
+                return default_value
 
             open(lock_file, 'a').close()
 
